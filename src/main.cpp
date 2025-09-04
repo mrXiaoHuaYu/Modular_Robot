@@ -17,22 +17,7 @@
 // 例如：SR_01:HOST:REPORT_IP:172.20.10.2  上位机--->下位机SR_01
 // 例如：SR_01:SR_02:MOVE                  下位机SR_02--->下位机SR_01
 
-void setup() {
-    Serial.begin(9600);
-    deviceID = lora.getDeviceID(); // 获取全局设备ID
-
-    // 初始化硬件和模块
-    ledStatus.begin();
-    ledStatus.setStatus(LED_STANDBY); // 设置为待机状态
-
-    lora.initLORA();   // 初始化LORA模块
-    motion.init();     // 初始化运动控制模块
-    motion.voltSet(0); // 确保开机时电压为0
-
-    tasks_init();
-
-    safePrintln("Modules Initialized.");
-}
+void setup() {}
 
 void loop() { vTaskDelay(pdMS_TO_TICKS(1000)); }
 // printf("Device ID: %s\n", deviceID);
