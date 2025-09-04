@@ -46,6 +46,45 @@ static void handle_OtaDisable(const String &args) {
     xEventGroupSetBits(xOtaEventGroup, OTA_STOP_BIT);
 }
 
+static void handle_SetParams(const String &args) {
+    // args 格式: PARAM_NAME,VALUE  例如: "VOLTAGE,80"
+    int separatorIndex = args.indexOf(',');
+    if (separatorIndex == -1) {
+        safePrintln("Invalid SET_PARAMS format: " + args);
+        return;
+    }
+
+    String paramName = args.substring(0, separatorIndex);
+    String paramValue = args.substring(separatorIndex + 1);
+
+    safePrintln("Setting param '" + paramName + "' to '" + paramValue + "'");
+
+    // 根据参数名调用不同的 Motion 函数
+    bool success = true;
+    if (paramName == "VOLTAGE") {
+        motion.voltSet(paramValue.toInt());
+    } else if (paramName == "DUTY_CYCLE") {
+        motion.setDuty(paramValue.toFloat());
+    } else if (paramName == "FWD_FREQ") { // 前进后退逻辑还没弄好
+        // 假设前进和后退的频率/相位需要一起设置
+        // 这里只是一个示例，您可以根据需要设计更复杂的逻辑
+        // motion.setForwardFreq(paramValue.toFloat());
+    } else if (paramName == "FWD_PHASE") {
+        // motion.setForwardPhase(paramValue.toFloat());
+    } else {
+        success = false;
+        safePrintln("Unknown parameter name: " + paramName);
+    }
+
+    // 如果设置成功，回复一个 ACK 消息
+    if (success) {
+        String ackPayload = "SET_PARAMS," + args; // 将收到的参数原样返回
+        String response =
+            hostID + ":" + deviceID + ":" + ACK + ":" + ackPayload + "\n";
+        lora.sendData(response);
+    }
+}
+
 // --- 2. 定义命令处理函数的类型别名，方便书写 ---
 //  这个函数指针指向一个函数，该函数接收一个String类型的参数且无返回值
 typedef void (*CommandHandler)(const String &args);
@@ -58,13 +97,13 @@ struct CommandEntry {
 };
 
 //  这就是我们的“表格”，所有命令都在这里注册
-static const CommandEntry commandTable[] = {
-    {Forward, handle_Forward},
-    {Backward, handle_Backward},
-    {STOP, handle_Stop},
-    {Step_Forward, handle_Step_Forward},
-    {OTA_ENABLE, handle_OtaEnable},
-    {OTA_DISABLE, handle_OtaDisable},
+static const CommandEntry commandTable[] = {{Forward, handle_Forward},
+                                            {Backward, handle_Backward},
+                                            {STOP, handle_Stop},
+                                            {Step_Forward, handle_Step_Forward},
+                                            {OTA_ENABLE, handle_OtaEnable},
+                                            {OTA_DISABLE, handle_OtaDisable},
+                                            {SET_PARAMS, handle_SetParams}
 
 };
 

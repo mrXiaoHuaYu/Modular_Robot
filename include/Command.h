@@ -37,6 +37,12 @@
 
 #define GET_IP "GET_IP" // 获得自身连接的IP地址
 
+#define SET_PARAMS "SET_PARAMS" // 统一的参数设置入口
+// payload 格式: PARAM_NAME,VALUE  例如: "VOLTAGE,80" 或 "FWD_FREQ,10000"
+
+#define ACK "ACK" // 统一的确认回复命令  原参数返回，加一个ACK
+// payload 格式: ACK_COMMAND,VALUE  例如: "SET_PARAMS,VOLTAGE,80"
+
 // 编写命令 对应编号
 
 #endif /* Command LORA */
