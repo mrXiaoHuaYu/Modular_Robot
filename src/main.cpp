@@ -19,18 +19,16 @@
 
 void setup() {
     Serial.begin(9600);
-    deviceID = lora.getDeviceID(); // 获取全局设备ID
+    // task 配置之前都不允许用safePrintln
+
+    deviceID = lora.getDeviceID(); // 获取内部设备ID
 
     // 初始化硬件和模块
     ledStatus.begin();
     ledStatus.setStatus(LED_STANDBY); // 设置为待机状态
-
-    lora.initLORA();   // 初始化LORA模块
-    motion.init();     // 初始化运动控制模块
-    motion.voltSet(0); // 确保开机时电压为0
-
+    lora.initLORA();                  // 初始化LORA模块
+    motion.init();                    // 初始化运动控制模块
     tasks_init();
-
     safePrintln("Modules Initialized.");
 }
 

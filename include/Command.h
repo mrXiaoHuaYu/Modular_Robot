@@ -13,11 +13,6 @@
     "80041E0000258000041F00010503E8007777772E617368696E696E672E636F6D7C7C7C7C" \
     "7C054000230000003C3C000A19000000050005000000002000"
 
-// 【命令字】+【频率】+【电压】
-// 相位-封装在内部
-#define Forward "M_F"
-#define Backward "M_B"
-
 // 【命令字】+【占空比】+【步进频率】
 // 频率封装在内部
 #define Step_Forward "M_SF"  // 步进前进
@@ -27,6 +22,11 @@
 #define EMG_B "EMG_B" // 电磁铁后退侧_两触点
 
 #define STOP "STOP" // 停止命令
+
+// 【命令字】+【频率】+【电压】
+// 相位-封装在内部
+#define Forward "M_F"
+#define Backward "M_B"
 
 #define VOLTAGE "VOLT"    // 电压命令
 #define MOV_PAR_F "M_P_F" // 前进参数编辑：【M_P】+【频率】+【相位】
@@ -38,10 +38,16 @@
 #define GET_IP "GET_IP" // 获得自身连接的IP地址
 
 #define SET_PARAMS "SET_PARAMS" // 统一的参数设置入口
-// payload 格式: PARAM_NAME,VALUE  例如: "VOLTAGE,80" 或 "FWD_FREQ,10000"
+// SET_PARAMS 的 payload 格式: "PARAM_NAME,VALUE"
+// 可用的 PARAM_NAME 包括: 所有数值都是int
+// - "VOLTAGE"      (0-80)
+// - "DUTY"         (1-99)
+// - "FWD_FREQ"     (100-50000)
+// - "FWD_PHASE"    (0-360)
+// - "BWD_FREQ"     (100-50000)
+// - "BWD_PHASE"    (0-360)
 
 #define ACK "ACK" // 统一的确认回复命令  原参数返回，加一个ACK
-// payload 格式: ACK_COMMAND,VALUE  例如: "SET_PARAMS,VOLTAGE,80"
 
 // 编写命令 对应编号
 

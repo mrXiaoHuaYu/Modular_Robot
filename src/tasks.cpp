@@ -81,7 +81,7 @@ static void Task_LoRa(void *pvParameters) {
         }
     }
 
-    safePrintln("LoRa Task started. My Device ID is: " + deviceID);
+    safePrintln("Device ID is: " + deviceID);
 
     for (;;) {
         if (Serial1.available() > 0) {

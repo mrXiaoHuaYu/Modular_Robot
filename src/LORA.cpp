@@ -5,6 +5,7 @@
 #include "Pins.h"
 #include "tasks.h"
 #include <HardwareSerial.h>
+#include <Preferences.h>
 
 LORA lora; // 全局变量定义
 String deviceID = "";
@@ -12,21 +13,22 @@ String hostID = "HOST";
 
 String LORA::getDeviceID() {
     Preferences prefs;
+    prefs.begin("robot", false);
 
-    // 先尝试以只读模式打开
-    if (prefs.begin("robot", true)) {
-        String deviceID = prefs.getString("DEVICE_ID", "");
+    String currentNvsID = prefs.getString("DEVICE_ID", "");
+    String masterID = MASTER_DEVICE_ID;
+
+    if (currentNvsID != masterID) {
+        Serial.println("NVS Device ID mismatch or not set. Writing new ID: " +
+                       masterID);
+        prefs.putString("DEVICE_ID", masterID);
+
         prefs.end();
-
-        // 如果成功读取到非空值，直接返回
-        if (deviceID != "") {
-            return deviceID;
-        }
+        return masterID;
     } else {
         prefs.end();
+        return currentNvsID;
     }
-
-    return deviceID;
 }
 
 void LORA::sendHexCommand(const char *hexString, HardwareSerial &serialPort) {
@@ -56,24 +58,30 @@ static void waitAUXReady() {
     while (digitalRead(AUX) == LOW)
         ;      // 等待模块处理完
     delay(20); // 稳定延迟
-    Serial.print("模块自检完成");
 }
 
 void LORA::initLORA() {
-
-    Serial1.begin(9600, SERIAL_8N1, U1RXD,
-                  U1TXD); // 使用Serial1连接LoRa,配置成9600 8N1
+    // 1. 基础硬件和串口初始化
+    Serial1.begin(9600, SERIAL_8N1, U1RXD, U1TXD);
     pinMode(MD0, OUTPUT);
     pinMode(MD1, OUTPUT);
     pinMode(AUX, INPUT);
+
+    // 2. 检查手动配置开关
+#if FORCE_LORA_CONFIG == true
+    // --- 如果开关为 true, 执行完整的配置流程 ---
+    Serial.println(
+        "FORCE_LORA_CONFIG is true. Performing full LoRa configuration...");
+
     waitAUXReady();
-    // 配置模式
+
     digitalWrite(MD0, LOW);
     digitalWrite(MD1, LOW);
+    delay(100);
 
-    // 建议直接用他们的软件转码命令，手册是错误的
-    // 成功码是80 04 1E
     sendHexCommand(LoraCMD, Serial1);
+    delay(500);
+
     while (Serial1.available()) {
         uint8_t byteIn = Serial1.read();
         Serial.print("模块回复: 0x");
@@ -81,13 +89,20 @@ void LORA::initLORA() {
             Serial.print("0");
         Serial.println(byteIn, HEX);
     }
-    delay(500);
-    Serial.println("LORA设置完毕...");
 
-    // 一般工作模式
+    Serial.println("LORA configuration complete.");
+
+#else
+    // --- 如果开关为 false, 直接跳过 ---
+    Serial.println("FORCE_LORA_CONFIG is false. Skipping LoRa configuration.");
+#endif
+
+    // 3. 无论如何，最后都切换到正常工作模式
+    waitAUXReady();
     digitalWrite(MD0, HIGH);
     digitalWrite(MD1, LOW);
-    Serial.println("LORA工作模式启动完成... ...");
+    delay(100);
+    Serial.println("LORA switched to normal working mode.");
 }
 
 void LORA::sendData(const String &data) {

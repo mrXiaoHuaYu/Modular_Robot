@@ -8,6 +8,34 @@
 #include "LORA.h"
 #include "Motion.h"
 #include <WiFi.h>
+#include <cstdlib>
+
+/**
+ * @brief 安全地将String转换为long
+ * @param s 输入字符串
+ * @param result 输出转换后的long值
+ * @return bool 转换是否成功
+ */
+static bool parseStringToInt(const String &s, long &result) {
+    char *endptr;
+    // 使用 strtol，它比 .toInt() 更健壮
+    result = strtol(s.c_str(), &endptr, 10);
+    // 如果 endptr 指向字符串末尾的'\0'，说明整个字符串都是有效的数字
+    return (*endptr == '\0');
+}
+
+/**
+ * @brief 安全地将String转换为float
+ * @param s 输入字符串
+ * @param result 输出转换后的float值
+ * @return bool 转换是否成功
+ */
+static bool parseStringToFloat(const String &s, float &result) {
+    char *endptr;
+    // 使用 strtof，它比 .toFloat() 更健壮
+    result = strtof(s.c_str(), &endptr);
+    return (*endptr == '\0');
+}
 
 // --- 1. 定义所有命令的具体处理函数 ---
 
@@ -15,13 +43,13 @@ static void handle_Forward(const String &args) {
     safePrintln("Executing FORWARD command with args: " + args);
     ledStatus.setStatus(LED_MOTION_ACTIVE);
     // TODO: 在这里解析args以获取频率、电压等参数
-    motion.start();
+    motion.moveForward();
 }
 
 static void handle_Backward(const String &args) {
     safePrintln("Executing BACKWARD command with args: " + args);
     ledStatus.setStatus(LED_MOTION_ACTIVE);
-    motion.start();
+    motion.moveBackward();
 }
 
 static void handle_Step_Forward(const String &args) {
@@ -47,7 +75,7 @@ static void handle_OtaDisable(const String &args) {
 }
 
 static void handle_SetParams(const String &args) {
-    // args 格式: PARAM_NAME,VALUE  例如: "VOLTAGE,80"
+    // args 格式: PARAM_NAME,VALUE
     int separatorIndex = args.indexOf(',');
     if (separatorIndex == -1) {
         safePrintln("Invalid SET_PARAMS format: " + args);
@@ -55,34 +83,54 @@ static void handle_SetParams(const String &args) {
     }
 
     String paramName = args.substring(0, separatorIndex);
-    String paramValue = args.substring(separatorIndex + 1);
+    String paramValueStr = args.substring(separatorIndex + 1);
 
-    safePrintln("Setting param '" + paramName + "' to '" + paramValue + "'");
+    safePrintln("Setting param '" + paramName + "' to '" + paramValueStr + "'");
 
-    // 根据参数名调用不同的 Motion 函数
-    bool success = true;
+    bool success = false;
+    long intValue;
+    float floatValue;
+
     if (paramName == "VOLTAGE") {
-        motion.voltSet(paramValue.toInt());
-    } else if (paramName == "DUTY_CYCLE") {
-        motion.setDuty(paramValue.toFloat());
-    } else if (paramName == "FWD_FREQ") { // 前进后退逻辑还没弄好
-        // 假设前进和后退的频率/相位需要一起设置
-        // 这里只是一个示例，您可以根据需要设计更复杂的逻辑
-        // motion.setForwardFreq(paramValue.toFloat());
+        if (parseStringToInt(paramValueStr, intValue)) {
+            success = motion.setGlobalVoltage((int)intValue);
+        }
+    } else if (paramName == "DUTY") {
+        if (parseStringToFloat(paramValueStr, floatValue)) {
+            success = motion.setGlobalDutyCycle(floatValue);
+        }
+    } else if (paramName == "FWD_FREQ") {
+        if (parseStringToInt(paramValueStr, intValue)) {
+            success = motion.setForwardFreq((uint32_t)intValue);
+        }
     } else if (paramName == "FWD_PHASE") {
-        // motion.setForwardPhase(paramValue.toFloat());
+        if (parseStringToFloat(paramValueStr, floatValue)) {
+            success = motion.setForwardPhase(floatValue);
+        }
+    } else if (paramName == "BWD_FREQ") {
+        if (parseStringToInt(paramValueStr, intValue)) {
+            success = motion.setBackwardFreq((uint32_t)intValue);
+        }
+    } else if (paramName == "BWD_PHASE") {
+        if (parseStringToFloat(paramValueStr, floatValue)) {
+            success = motion.setBackwardPhase(floatValue);
+        }
     } else {
-        success = false;
         safePrintln("Unknown parameter name: " + paramName);
+        success = false;
     }
 
-    // 如果设置成功，回复一个 ACK 消息
-    if (success) {
-        String ackPayload = "SET_PARAMS," + args; // 将收到的参数原样返回
-        String response =
-            hostID + ":" + deviceID + ":" + ACK + ":" + ackPayload + "\n";
-        lora.sendData(response);
+    if (!success) {
+        safePrintln("Failed to set param '" + paramName + "'. Value '" +
+                    paramValueStr + "' may be invalid or out of range.");
+        return; // 设置失败，不回复ACK
     }
+
+    // 设置成功，回复一个 ACK 消息
+    String ackPayload = "SET_PARAMS," + args;
+    String response =
+        hostID + ":" + deviceID + ":" + ACK + ":" + ackPayload + "\n";
+    lora.sendData(response);
 }
 
 // --- 2. 定义命令处理函数的类型别名，方便书写 ---

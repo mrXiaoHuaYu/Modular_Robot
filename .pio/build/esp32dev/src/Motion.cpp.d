@@ -128,14 +128,15 @@
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/spi_flash/include/esp_spi_flash.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/spi_flash/include/esp_spi_flash_counters.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_hw_support/include/soc/esp32/spiram.h \
- include/pwmWrite.h \
- C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/driver/include/driver/ledc.h \
- C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/hal/include/hal/ledc_types.h \
- C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/driver/include/driver/periph_ctrl.h \
- C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/soc/esp32/include/soc/periph_defs.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/driver/include/driver/mcpwm.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/hal/include/hal/mcpwm_types.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/soc/esp32/include/soc/mcpwm_reg.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/soc/esp32/include/soc/mcpwm_struct.h \
  include/tasks.h \
+ C:/Users/A/.platformio/packages/framework-arduinoespressif32/libraries/Preferences/src/Preferences.h \
+ include/pwmWrite.h \
+ C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/driver/include/driver/ledc.h \
+ C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/hal/include/hal/ledc_types.h \
+ C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/driver/include/driver/periph_ctrl.h \
+ C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/soc/esp32/include/soc/periph_defs.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/soc/include/soc/mcpwm_periph.h
