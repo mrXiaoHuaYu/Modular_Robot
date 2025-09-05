@@ -15,61 +15,20 @@ class Motion {
     void init();
     void stop();
 
-    /**
-     * @brief [核心] 控制机器人前进
-     * @details 内部会自动调用前进频率和前进相位参数来配置MCPWM并启动电机
-     */
     void moveForward();
-
-    /**
-     * @brief [核心] 控制机器人后退
-     * @details 内部会自动调用后退频率和后退相位参数来配置MCPWM并启动电机
-     */
     void moveBackward();
 
-    // --- 参数设置函数 (带范围检查) ---
+    // --- 参数设置函数 ---
 
-    /**
-     * @brief 设置全局电压
-     * @param voltage 电压值 (0-80V)
-     * @return bool 设置是否成功
-     */
     bool setGlobalVoltage(int voltage);
-
-    /**
-     * @brief 设置全局PWM占空比
-     * @param dutyCycle 占空比值 (0.1 - 99.9 %)
-     * @return bool 设置是否成功
-     */
     bool setGlobalDutyCycle(float dutyCycle);
-
-    /**
-     * @brief 设置前进时的频率
-     * @param freq 频率值 (100 - 50000 Hz)
-     * @return bool 设置是否成功
-     */
     bool setForwardFreq(uint32_t freq);
-
-    /**
-     * @brief 设置前进时的相位
-     * @param phase 相位值 (0 - 360 度)
-     * @return bool 设置是否成功
-     */
     bool setForwardPhase(float phase);
-
-    /**
-     * @brief 设置后退时的频率
-     * @param freq 频率值 (100 - 50000 Hz)
-     * @return bool 设置是否成功
-     */
     bool setBackwardFreq(uint32_t freq);
-
-    /**
-     * @brief 设置后退时的相位
-     * @param phase 相位值 (0 - 360 度)
-     * @return bool 设置是否成功
-     */
     bool setBackwardPhase(float phase);
+
+    void swapDirection();             // 切换运动方向
+    bool isDirectionReversed() const; // 获取运动状态
 
     //*****************Step motion*****************
     void step_init();
@@ -100,6 +59,7 @@ class Motion {
     float forward_phase_deg;
     uint32_t backward_freq;
     float backward_phase_deg;
+    bool _isDirectionReversed; // 运动方向切换标志位
 
     //*****************Step motion*****************
     void _apply_step_pwm();

@@ -133,6 +133,18 @@ static void handle_SetParams(const String &args) {
     lora.sendData(response);
 }
 
+static void handle_SwapDirection(const String &args) {
+    safePrintln("Executing SWAP_DIRECTION command.");
+    motion.swapDirection(); // 调用 motion 对象的函数来切换方向
+
+    // 回复一个 ACK 消息，并告知当前的状态
+    String currentState = motion.isDirectionReversed() ? "REVERSED" : "NORMAL";
+    String ackPayload = "SWAP_DIR," + currentState;
+    String response =
+        hostID + ":" + deviceID + ":" + ACK + ":" + ackPayload + "\n";
+    lora.sendData(response);
+}
+
 // --- 2. 定义命令处理函数的类型别名，方便书写 ---
 //  这个函数指针指向一个函数，该函数接收一个String类型的参数且无返回值
 typedef void (*CommandHandler)(const String &args);
@@ -145,13 +157,15 @@ struct CommandEntry {
 };
 
 //  这就是我们的“表格”，所有命令都在这里注册
-static const CommandEntry commandTable[] = {{Forward, handle_Forward},
-                                            {Backward, handle_Backward},
-                                            {STOP, handle_Stop},
-                                            {Step_Forward, handle_Step_Forward},
-                                            {OTA_ENABLE, handle_OtaEnable},
-                                            {OTA_DISABLE, handle_OtaDisable},
-                                            {SET_PARAMS, handle_SetParams}
+static const CommandEntry commandTable[] = {
+    {Forward, handle_Forward},
+    {Backward, handle_Backward},
+    {STOP, handle_Stop},
+    {Step_Forward, handle_Step_Forward},
+    {OTA_ENABLE, handle_OtaEnable},
+    {OTA_DISABLE, handle_OtaDisable},
+    {SET_PARAMS, handle_SetParams},
+    {SWAP_DIRECTION, handle_SwapDirection}
 
 };
 

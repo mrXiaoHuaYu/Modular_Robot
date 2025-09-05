@@ -47,6 +47,8 @@
 // - "BWD_FREQ"     (100-50000)
 // - "BWD_PHASE"    (0-360)
 
+#define SWAP_DIRECTION "SWAP_DIR" // 切换运动方向 (前进/后退)
+
 #define ACK "ACK" // 统一的确认回复命令  原参数返回，加一个ACK
 
 // 编写命令 对应编号

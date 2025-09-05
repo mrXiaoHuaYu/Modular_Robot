@@ -25,7 +25,8 @@ Motion::Motion()
     : global_voltage(DEFAULT_VOLTAGE), global_duty_cycle(DEFAULT_DUTY_CYCLE),
       forward_freq(DEFAULT_FWD_FREQ), forward_phase_deg(DEFAULT_FWD_PHASE),
       backward_freq(DEFAULT_BWD_FREQ), backward_phase_deg(DEFAULT_BWD_PHASE),
-      _step_time_us(500), _still_time_us(1000), _is_stepping(false) {}
+      _isDirectionReversed(false), _step_time_us(500), _still_time_us(1000),
+      _is_stepping(false) {}
 Motion::~Motion() {}
 
 void Motion::stop() {
@@ -40,15 +41,29 @@ void Motion::start() {
 
 // [核心]
 void Motion::moveForward() {
-    _applyMovementParams(forward_freq, forward_phase_deg);
+    if (_isDirectionReversed) {
+        _applyMovementParams(backward_freq, backward_phase_deg);
+    } else {
+        _applyMovementParams(forward_freq, forward_phase_deg);
+    }
     start();
 }
 
 // [核心]
 void Motion::moveBackward() {
-    _applyMovementParams(backward_freq, backward_phase_deg);
+    if (_isDirectionReversed) {
+        _applyMovementParams(forward_freq, forward_phase_deg);
+    } else {
+        _applyMovementParams(backward_freq, backward_phase_deg);
+    }
     start();
 }
+
+// 方向切换
+void Motion::swapDirection() { _isDirectionReversed = !_isDirectionReversed; }
+
+// 获取方向状态
+bool Motion::isDirectionReversed() const { return _isDirectionReversed; }
 
 // --- 参数设置函数的实现 ---
 bool Motion::setGlobalVoltage(int voltage) {
@@ -191,10 +206,7 @@ void Motion::step_init() {
 /**
  * @brief 设置步进参数
  */
-void Motion::step_set_params(
-    float step_time_ms,
-    float still_time_ms) // *** 更改点：接收 float 类型的毫秒 ***
-{
+void Motion::step_set_params(float step_time_ms, float still_time_ms) {
     // 输入参数校验
     if (step_time_ms <= 0 || still_time_ms <= 0) {
         safePrintln("Error: Step times must be greater than zero.");
@@ -224,10 +236,16 @@ void Motion::step_start() {
         return;
     _is_stepping = true;
 
-    this->start();
+    // 步进的相关逻辑没有写完
+    // 步进应该变成一个开关，如果打开【步进】，前进后退逻辑都适用，只是高频开关OPA即可
+    // 无需单独来一个步进前进/步进后退的逻辑
+
+    // 上位机【步进】开关打开，就一直在开关opa了
 
     _apply_step_pwm();
     pwm.resume(pwm.attached(Amp_en));
+
+    this->start();
 
     Serial.println("Stepping mode started.");
 }
