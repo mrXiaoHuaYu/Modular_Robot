@@ -117,8 +117,7 @@ static void Task_LoRa(void *pvParameters) {
                         payload.trim();
 
                         // 5. 将分离好的命令和参数交给处理器
-                        safePrintln("For me! From: " + sender + ", Cmd: '" +
-                                    command + "', Payload: '" + payload + "'");
+                        safePrintln("For me!");
                         processCommand(command, payload);
 
                     } else {

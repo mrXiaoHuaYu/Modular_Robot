@@ -7,8 +7,6 @@
 #include <pwmWrite.h>
 #include <soc/mcpwm_periph.h>
 
-// 一个反转标志。
-
 Motion motion;
 Pwm pwm;
 
@@ -105,10 +103,9 @@ bool Motion::setBackwardPhase(float phase) {
 void Motion::_applyVoltage() {
     int voltDuty = map(this->global_voltage, 0, 80, 0, 1023);
     if (voltDuty <= 0) {
-        digitalWrite(CTRL_PWM, LOW);
-    } else {
-        pwm.write(CTRL_PWM, voltDuty, 30000, this->resolution, 0);
+        voltDuty = 0;
     }
+    pwm.write(CTRL_PWM, voltDuty, 30000, this->resolution, 0);
 }
 
 void Motion::_applyMovementParams(uint32_t freq, float phase_deg) {
