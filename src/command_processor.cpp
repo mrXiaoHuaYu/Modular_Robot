@@ -40,47 +40,45 @@ static bool parseStringToFloat(const String &s, float &result) {
 // --- 1. 定义所有命令的具体处理函数 ---
 
 static void handle_Forward(const String &args) {
-    safePrintln("Executing FORWARD command with args: " + args);
+    safePrintln("Executing FORWARD command");
     ledStatus.setStatus(LED_MOTION_ACTIVE);
     // TODO: 在这里解析args以获取频率、电压等参数
     motion.moveForward();
 }
 
 static void handle_Backward(const String &args) {
-    safePrintln("Executing BACKWARD command with args: " + args);
+    safePrintln("Executing BACKWARD command");
     ledStatus.setStatus(LED_MOTION_ACTIVE);
     motion.moveBackward();
 }
 
 static void handle_Stop(const String &args) {
-    safePrintln("Executing STOP command.");
+    safePrintln("Executing STOP command");
     ledStatus.setStatus(LED_STANDBY);
     motion.stop();
 }
 
 static void handle_OtaEnable(const String &args) {
-    safePrintln("Executing OTA_ENABLE command.");
+    safePrintln("Executing OTA_ENABLE command");
     xEventGroupSetBits(xOtaEventGroup, OTA_START_BIT);
 }
 
 static void handle_OtaDisable(const String &args) {
-    safePrintln("Executing OTA_DISABLE command.");
+    safePrintln("Executing OTA_DISABLE command");
     xEventGroupSetBits(xOtaEventGroup, OTA_STOP_BIT);
 }
 
-static void handle_SetParams(const String &args) {
-    // args 格式: PARAM_NAME,VALUE
-    int separatorIndex = args.indexOf(',');
+static void processSingleParam(const String &paramPair) {
+    int separatorIndex = paramPair.indexOf(':');
     if (separatorIndex == -1) {
-        safePrintln("Invalid SET_PARAMS format: " + args);
+        safePrintln("Invalid batch param format: " + paramPair);
         return;
     }
 
-    String paramName = args.substring(0, separatorIndex);
-    String paramValueStr = args.substring(separatorIndex + 1);
+    String paramName = paramPair.substring(0, separatorIndex);
+    String paramValueStr = paramPair.substring(separatorIndex + 1);
 
-    safePrintln("Setting param '" + paramName + "' to '" + paramValueStr + "'");
-
+    // --- 这里是您原来 handle_SetParams 中的核心判断逻辑，可以直接复用 ---
     bool success = false;
     long intValue;
     float floatValue;
@@ -109,19 +107,46 @@ static void handle_SetParams(const String &args) {
         if (parseStringToFloat(paramValueStr, floatValue)) {
             success = motion.setBackwardPhase(floatValue);
         }
+    } else if (paramName == "STEP_TIME_MS") {
+        if (parseStringToFloat(paramValueStr, floatValue)) {
+            success = motion.setStepTime(floatValue);
+        }
+    } else if (paramName == "STILL_TIME_MS") {
+        if (parseStringToFloat(paramValueStr, floatValue)) {
+            success = motion.setStillTime(floatValue);
+        }
     } else {
-        safePrintln("Unknown parameter name: " + paramName);
+        safePrintln("Unknown parameter name in batch: " + paramName);
         success = false;
     }
 
     if (!success) {
-        safePrintln("Failed to set param '" + paramName + "'. Value '" +
-                    paramValueStr + "' may be invalid or out of range.");
-        return; // 设置失败，不回复ACK
+        safePrintln("Failed to set param in batch '" + paramName +
+                    "'. Value '" + paramValueStr + "' may be invalid.");
+    }
+    // 注意：在批处理模式下，我们通常不为单个参数的失败而中断或回复。
+    // 可以选择记录失败，或者信任上位机发来的数据都是合法的。
+}
+
+static void handle_SetBatchParams(const String &args) {
+    String currentArgs = args;
+    int separatorIndex;
+
+    safePrintln("Executing BATCH_PARAMS");
+
+    // 循环处理由分号分隔的每个参数对
+    while ((separatorIndex = currentArgs.indexOf(';')) != -1) {
+        String paramPair = currentArgs.substring(0, separatorIndex);
+        processSingleParam(paramPair); // 调用一个辅助函数来处理单个参数
+        currentArgs = currentArgs.substring(separatorIndex + 1);
+    }
+    // 处理最后一个参数对（或者如果只有一个参数对的情况）
+    if (currentArgs.length() > 0) {
+        processSingleParam(currentArgs);
     }
 
-    // 设置成功，回复一个 ACK 消息
-    String ackPayload = "SET_PARAMS," + args;
+    // 所有参数处理完毕后，发送一个总的ACK
+    String ackPayload = "BATCH_OK";
     String response =
         hostID + ":" + deviceID + ":" + ACK + ":" + ackPayload + "\n";
     lora.sendData(response);
@@ -157,41 +182,6 @@ static void handle_EnableStepMode(const String &args) {
     lora.sendData(response);
 }
 
-static void handle_SetStepTime(const String &args) {
-    float step_ms;
-    if (parseStringToFloat(args, step_ms)) {
-        if (motion.setStepTime(step_ms)) {
-            // 设置成功，回复ACK
-            String ackPayload = "SET_STEP_TIME," + args;
-            String response =
-                hostID + ":" + deviceID + ":" + ACK + ":" + ackPayload + "\n";
-            lora.sendData(response);
-        } else {
-            safePrintln("Failed to set step time, value out of range: " + args);
-        }
-    } else {
-        safePrintln("Failed to parse SET_STEP_TIME payload: " + args);
-    }
-}
-
-static void handle_SetStillTime(const String &args) {
-    float still_ms;
-    if (parseStringToFloat(args, still_ms)) {
-        if (motion.setStillTime(still_ms)) {
-            // 设置成功，回复ACK
-            String ackPayload = "SET_STILL_TIME," + args;
-            String response =
-                hostID + ":" + deviceID + ":" + ACK + ":" + ackPayload + "\n";
-            lora.sendData(response);
-        } else {
-            safePrintln("Failed to set still time, value out of range: " +
-                        args);
-        }
-    } else {
-        safePrintln("Failed to parse SET_STILL_TIME payload: " + args);
-    }
-}
-
 // --- 2. 定义命令处理函数的类型别名，方便书写 ---
 //  这个函数指针指向一个函数，该函数接收一个String类型的参数且无返回值
 typedef void (*CommandHandler)(const String &args);
@@ -210,10 +200,9 @@ static const CommandEntry commandTable[] = {
     {STOP, handle_Stop},
     {OTA_ENABLE, handle_OtaEnable},
     {OTA_DISABLE, handle_OtaDisable},
-    {SET_PARAMS, handle_SetParams},
     {SWAP_DIRECTION, handle_SwapDirection},
-    {SET_STEP_TIME, handle_SetStepTime},
-    {SET_STILL_TIME, handle_SetStillTime}};
+    {ENABLE_STEP_MODE, handle_EnableStepMode},
+    {SET_BATCH_PARAMS, handle_SetBatchParams}};
 
 // --- 4. 实现主分派函数 ---
 void processCommand(const String &command, const String &args) {

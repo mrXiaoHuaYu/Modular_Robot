@@ -32,7 +32,7 @@
 
 #define GET_IP "GET_IP" // 获得自身连接的IP地址
 
-#define SET_PARAMS "SET_PARAMS" // 统一的参数设置入口
+#define SET_BATCH_PARAMS "SET_BATCH_PARAMS" // 批处理命令
 // SET_PARAMS 的 payload 格式: "PARAM_NAME,VALUE"
 // 可用的 PARAM_NAME 包括: 所有数值都是int
 // - "VOLTAGE"      (0-80)
@@ -46,9 +46,6 @@
 
 // 启用/禁用步进模式; payload: "1" 或 "0"
 #define ENABLE_STEP_MODE "STEP_MODE"
-// 设置步进参数; 静止时间和运动时间分开设置
-#define SET_STEP_TIME "SET_STEP_TIME"
-#define SET_STILL_TIME "SET_STILL_TIME"
 
 // 统一的确认回复命令  原参数返回，加一个ACK
 #define ACK "ACK"

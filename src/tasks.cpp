@@ -90,7 +90,7 @@ static void Task_LoRa(void *pvParameters) {
                 receivedData += inChar;
             } else {
                 // 收到一个完整的消息 (以 '\n' 结尾)
-                safePrintln("LoRa Received Raw: " + receivedData);
+                safePrintln("Receive: " + receivedData);
                 // 1. 寻找三个分隔符的位置
                 int firstColon = receivedData.indexOf(':');
                 int secondColon = receivedData.indexOf(':', firstColon + 1);
@@ -117,7 +117,6 @@ static void Task_LoRa(void *pvParameters) {
                         payload.trim();
 
                         // 5. 将分离好的命令和参数交给处理器
-                        safePrintln("For me!");
                         processCommand(command, payload);
 
                     } else {

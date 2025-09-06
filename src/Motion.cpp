@@ -237,7 +237,6 @@ bool Motion::setStepTime(float step_time_ms) {
         safePrintln("Error: Step time is too small to be represented.");
         return false;
     }
-    safePrintln("Step Time updated to: " + String(step_time_ms) + "ms");
     return true;
 }
 // 静止时间
@@ -251,7 +250,6 @@ bool Motion::setStillTime(float still_time_ms) {
         safePrintln("Error: Still time is too small to be represented.");
         return false;
     }
-    safePrintln("Still Time updated to: " + String(still_time_ms) + "ms");
     return true;
 }
 
