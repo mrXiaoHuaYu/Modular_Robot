@@ -52,12 +52,6 @@ static void handle_Backward(const String &args) {
     motion.moveBackward();
 }
 
-static void handle_Step_Forward(const String &args) {
-    safePrintln("Executing STEP_FORWARD command with args: " + args);
-    ledStatus.setStatus(LED_MOTION_ACTIVE);
-    motion.step_start();
-}
-
 static void handle_Stop(const String &args) {
     safePrintln("Executing STOP command.");
     ledStatus.setStatus(LED_STANDBY);
@@ -145,6 +139,59 @@ static void handle_SwapDirection(const String &args) {
     lora.sendData(response);
 }
 
+static void handle_EnableStepMode(const String &args) {
+    if (args == "1") {
+        motion.enableStepMode(true);
+    } else if (args == "0") {
+        motion.enableStepMode(false);
+    } else {
+        safePrintln("Invalid payload for STEP_MODE: " + args);
+        return;
+    }
+
+    // 回复ACK
+    String currentState = motion.isStepModeEnabled() ? "ENABLED" : "DISABLED";
+    String ackPayload = "STEP_MODE," + currentState;
+    String response =
+        hostID + ":" + deviceID + ":" + ACK + ":" + ackPayload + "\n";
+    lora.sendData(response);
+}
+
+static void handle_SetStepTime(const String &args) {
+    float step_ms;
+    if (parseStringToFloat(args, step_ms)) {
+        if (motion.setStepTime(step_ms)) {
+            // 设置成功，回复ACK
+            String ackPayload = "SET_STEP_TIME," + args;
+            String response =
+                hostID + ":" + deviceID + ":" + ACK + ":" + ackPayload + "\n";
+            lora.sendData(response);
+        } else {
+            safePrintln("Failed to set step time, value out of range: " + args);
+        }
+    } else {
+        safePrintln("Failed to parse SET_STEP_TIME payload: " + args);
+    }
+}
+
+static void handle_SetStillTime(const String &args) {
+    float still_ms;
+    if (parseStringToFloat(args, still_ms)) {
+        if (motion.setStillTime(still_ms)) {
+            // 设置成功，回复ACK
+            String ackPayload = "SET_STILL_TIME," + args;
+            String response =
+                hostID + ":" + deviceID + ":" + ACK + ":" + ackPayload + "\n";
+            lora.sendData(response);
+        } else {
+            safePrintln("Failed to set still time, value out of range: " +
+                        args);
+        }
+    } else {
+        safePrintln("Failed to parse SET_STILL_TIME payload: " + args);
+    }
+}
+
 // --- 2. 定义命令处理函数的类型别名，方便书写 ---
 //  这个函数指针指向一个函数，该函数接收一个String类型的参数且无返回值
 typedef void (*CommandHandler)(const String &args);
@@ -161,13 +208,12 @@ static const CommandEntry commandTable[] = {
     {Forward, handle_Forward},
     {Backward, handle_Backward},
     {STOP, handle_Stop},
-    {Step_Forward, handle_Step_Forward},
     {OTA_ENABLE, handle_OtaEnable},
     {OTA_DISABLE, handle_OtaDisable},
     {SET_PARAMS, handle_SetParams},
-    {SWAP_DIRECTION, handle_SwapDirection}
-
-};
+    {SWAP_DIRECTION, handle_SwapDirection},
+    {SET_STEP_TIME, handle_SetStepTime},
+    {SET_STILL_TIME, handle_SetStillTime}};
 
 // --- 4. 实现主分派函数 ---
 void processCommand(const String &command, const String &args) {

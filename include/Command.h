@@ -13,11 +13,6 @@
     "80041E0000258000041F00010503E8007777772E617368696E696E672E636F6D7C7C7C7C" \
     "7C054000230000003C3C000A19000000050005000000002000"
 
-// 【命令字】+【占空比】+【步进频率】
-// 频率封装在内部
-#define Step_Forward "M_SF"  // 步进前进
-#define Step_Backward "M_SB" // 步进后退
-
 #define EMG_F "EMG_F" // 电磁铁前进侧_两触点
 #define EMG_B "EMG_B" // 电磁铁后退侧_两触点
 
@@ -49,8 +44,13 @@
 
 #define SWAP_DIRECTION "SWAP_DIR" // 切换运动方向 (前进/后退)
 
-#define ACK "ACK" // 统一的确认回复命令  原参数返回，加一个ACK
+// 启用/禁用步进模式; payload: "1" 或 "0"
+#define ENABLE_STEP_MODE "STEP_MODE"
+// 设置步进参数; 静止时间和运动时间分开设置
+#define SET_STEP_TIME "SET_STEP_TIME"
+#define SET_STILL_TIME "SET_STILL_TIME"
 
-// 编写命令 对应编号
+// 统一的确认回复命令  原参数返回，加一个ACK
+#define ACK "ACK"
 
 #endif /* Command LORA */

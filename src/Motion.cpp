@@ -12,29 +12,39 @@ Pwm pwm;
 
 void Motion::init() {
 
-    // [第2步] 安全第一：无论加载的电压是多少，强制设为0
     this->global_voltage = 0;
 
-    // [第3步] 继续执行原有的初始化流程
     pinMode(CTRL_PWM, OUTPUT);
     setupMCPWM();
-    _applyVoltage(); // 此时会应用安全值 0V
+    step_init();
+    _applyVoltage();
 }
 
 Motion::Motion()
     : global_voltage(DEFAULT_VOLTAGE), global_duty_cycle(DEFAULT_DUTY_CYCLE),
       forward_freq(DEFAULT_FWD_FREQ), forward_phase_deg(DEFAULT_FWD_PHASE),
       backward_freq(DEFAULT_BWD_FREQ), backward_phase_deg(DEFAULT_BWD_PHASE),
-      _isDirectionReversed(false), _step_time_us(500), _still_time_us(1000),
-      _is_stepping(false) {}
+      _isDirectionReversed(false), _step_time_us(500 * 1000),
+      _still_time_us(1000 * 1000), _is_step_mode_enabled(false) {}
 Motion::~Motion() {}
 
 void Motion::stop() {
     mcpwm_stop(MCPWM_UNIT_0, MCPWM_TIMER_0);
     mcpwm_stop(MCPWM_UNIT_1, MCPWM_TIMER_1);
+    pwm.pause(pwm.attached(Amp_en));
+    digitalWrite(Amp_en, LOW);
 }
 
 void Motion::start() {
+    if (_is_step_mode_enabled) {
+        // 步进模式: 启动PWM控制运放通断
+        _apply_step_pwm();
+        pwm.resume(pwm.attached(Amp_en));
+    } else {
+        // 连续模式: 直接拉高使能运放
+        digitalWrite(Amp_en, HIGH);
+    }
+
     mcpwm_start(MCPWM_UNIT_0, MCPWM_TIMER_0);
     mcpwm_start(MCPWM_UNIT_1, MCPWM_TIMER_1);
 }
@@ -188,86 +198,61 @@ void Motion::setupMCPWM() {
     mcpwm_stop(MCPWM_UNIT_1, MCPWM_TIMER_1);
 }
 
+void Motion::enableStepMode(bool enable) {
+    if (_is_step_mode_enabled == enable)
+        return;
+
+    _is_step_mode_enabled = enable;
+    safePrintln("Step mode " + String(enable ? "ENABLED" : "DISABLED"));
+
+    // 切换模式时强制停止，让用户重新发送运动指令
+    stop();
+}
+
+bool Motion::isStepModeEnabled() const { return _is_step_mode_enabled; }
+
 // ************************步进模式************************
 /**
  * @brief 初始化步进控制引脚
  */
 void Motion::step_init() {
     pinMode(Amp_en, OUTPUT);
-
-    // 初始状态禁用运放
     digitalWrite(Amp_en, LOW);
 
     pwm.attach(Amp_en);
-
     // 初始化后先暂停PWM输出，等待 step_start() 命令
     pwm.pause(pwm.attached(Amp_en));
 }
 /**
  * @brief 设置步进参数
  */
-void Motion::step_set_params(float step_time_ms, float still_time_ms) {
-    // 输入参数校验
-    if (step_time_ms <= 0 || still_time_ms <= 0) {
-        safePrintln("Error: Step times must be greater than zero.");
-        return;
+// 步进时间
+bool Motion::setStepTime(float step_time_ms) {
+    if (step_time_ms <= 0) {
+        safePrintln("Error: Step time must be greater than zero.");
+        return false;
     }
-
     _step_time_us = (uint32_t)(step_time_ms * 1000.0f);
+    if (_step_time_us == 0) {
+        safePrintln("Error: Step time is too small to be represented.");
+        return false;
+    }
+    safePrintln("Step Time updated to: " + String(step_time_ms) + "ms");
+    return true;
+}
+// 静止时间
+bool Motion::setStillTime(float still_time_ms) {
+    if (still_time_ms <= 0) {
+        safePrintln("Error: Still time must be greater than zero.");
+        return false;
+    }
     _still_time_us = (uint32_t)(still_time_ms * 1000.0f);
-
-    // 再次确认转换后不为0
-    if (_step_time_us == 0 || _still_time_us == 0) {
-        safePrintln("Error: Step times are too small to be represented.");
-        return;
+    if (_still_time_us == 0) {
+        safePrintln("Error: Still time is too small to be represented.");
+        return false;
     }
-
-    // 如果当前正在步进中，则动态更新PWM参数以立即生效
-    if (_is_stepping) {
-        _apply_step_pwm();
-    }
-}
-
-/**
- * @brief 启动步进模式
- */
-void Motion::step_start() {
-    if (_is_stepping)
-        return;
-    _is_stepping = true;
-
-    // 步进的相关逻辑没有写完
-    // 步进应该变成一个开关，如果打开【步进】，前进后退逻辑都适用，只是高频开关OPA即可
-    // 无需单独来一个步进前进/步进后退的逻辑
-
-    // 上位机【步进】开关打开，就一直在开关opa了
-
-    _apply_step_pwm();
-    pwm.resume(pwm.attached(Amp_en));
-
-    this->start();
-
-    Serial.println("Stepping mode started.");
-}
-
-/**
- * @brief 停止步进模式
- */
-void Motion::step_stop() {
-    if (!_is_stepping)
-        return;
-    _is_stepping = false;
-
-    pwm.pause(pwm.attached(Amp_en));
-
-    pwm.detach(Amp_en);
-    digitalWrite(Amp_en, LOW);
-
-    this->stop();
-
-    pwm.attach(Amp_en);
-
-    Serial.println("Stepping mode stopped.");
+    safePrintln("Still Time updated to: " + String(still_time_ms) + "ms");
+    return true;
 }
 
 /**
@@ -283,16 +268,10 @@ void Motion::_apply_step_pwm() {
     float step_freq_hz = 1000000.0f / total_period_us;
 
     // 2. 根据微秒计算占空比对应的PWM值
-    uint32_t max_duty_value = (1 << STEP_PWM_RESOLUTION) - 1;
+    uint32_t max_duty_value = (1 << resolution) - 1;
     uint32_t step_duty_value =
         (uint32_t)(((float)_step_time_us / total_period_us) * max_duty_value);
 
     // 3. 将计算出的频率和占空比写入PWM通道
-    pwm.write(Amp_en, step_duty_value, (uint32_t)step_freq_hz,
-              STEP_PWM_RESOLUTION);
-
-    safePrintln("Applying step params: Freq=" + String(step_freq_hz, 2) +
-                " Hz, DutyValue=" + String(step_duty_value) + "/" +
-                String(max_duty_value) + " (Step: " + String(_step_time_us) +
-                "us, Still: " + String(_still_time_us) + "us)");
+    pwm.write(Amp_en, step_duty_value, (uint32_t)step_freq_hz, resolution);
 }

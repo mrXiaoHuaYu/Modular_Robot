@@ -31,14 +31,17 @@ class Motion {
     bool isDirectionReversed() const; // 获取运动状态
 
     //*****************Step motion*****************
-    void step_init();
-    void step_set_params(float step_time_ms, float still_time_ms);
-    void step_start();
-    void step_stop();
+
+    void enableStepMode(bool enable); // 切换步进模式
+    bool isStepModeEnabled() const;   // 获取当前是否为步进模式
+    bool setStepTime(float step_time_ms);
+    bool setStillTime(float still_time_ms);
 
   private:
     void setupMCPWM();
     void start();
+
+    void step_init();
 
     /**
      * @brief [核心] 将指定的运动参数应用到MCPWM硬件
@@ -65,10 +68,7 @@ class Motion {
     void _apply_step_pwm();
     uint32_t _step_time_us;  // 微秒
     uint32_t _still_time_us; // 微秒
-    bool _is_stepping;
-    const int STEP_PWM_RESOLUTION = 10;
-
-    //*****************Step motion*****************
+    bool _is_step_mode_enabled;
 
     const int resolution = 10; // 精度2^10=1024 (取值0 ~ 20)
 };
