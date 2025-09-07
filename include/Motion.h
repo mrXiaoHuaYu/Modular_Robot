@@ -3,6 +3,7 @@
 #define __Motion_H
 
 #include "Pins.h"
+#include "esp_timer.h"
 #include <Arduino.h>
 #include <stdint.h> //这里定义uint32_t和uint16_t数据变量
 
@@ -39,9 +40,7 @@ class Motion {
 
   private:
     void setupMCPWM();
-    void start();
-
-    void step_init();
+    void _step_timer_init();
 
     /**
      * @brief [核心] 将指定的运动参数应用到MCPWM硬件
@@ -55,6 +54,10 @@ class Motion {
      */
     void _applyVoltage();
 
+    void _internal_start_mcpwm();
+    void _internal_stop_mcpwm();
+    static void stepTimerCallback(void *arg);
+
     // --- 存储所有运动参数的成员变量 ---
     int global_voltage;
     float global_duty_cycle;
@@ -65,10 +68,16 @@ class Motion {
     bool _isDirectionReversed; // 运动方向切换标志位
 
     //*****************Step motion*****************
-    void _apply_step_pwm();
+    float _step_time_ms;     // 毫秒
+    float _still_time_ms;    // 毫秒
     uint32_t _step_time_us;  // 微秒
     uint32_t _still_time_us; // 微秒
+
     bool _is_step_mode_enabled;
+
+    esp_timer_handle_t step_timer_handle;
+    volatile bool
+        isCurrentlyStepping; // 标记当前是处于“步进”还是“静止”状态 定时器用
 
     const int resolution = 10; // 精度2^10=1024 (取值0 ~ 20)
 };

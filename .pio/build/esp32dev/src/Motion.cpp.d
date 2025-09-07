@@ -1,5 +1,8 @@
 .pio/build/esp32dev/src/Motion.cpp.o: src/Motion.cpp include/Motion.h \
  include/Pins.h \
+ C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_timer/include/esp_timer.h \
+ C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_common/include/esp_err.h \
+ C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_common/include/esp_compiler.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp_arduino_version.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/freertos/include/freertos/FreeRTOS.h \
@@ -32,8 +35,6 @@
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_hw_support/include/soc/cpu.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_hw_support/include/esp_cpu.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/hal/include/hal/cpu_hal.h \
- C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_common/include/esp_err.h \
- C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_common/include/esp_compiler.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/soc/esp32/include/soc/soc_caps.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/hal/include/hal/cpu_types.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/hal/esp32/include/hal/cpu_ll.h \
@@ -45,7 +46,6 @@
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/soc/esp32/include/soc/soc.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_common/include/esp_assert.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_system/include/esp_private/crosscore_int.h \
- C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/esp_timer/include/esp_timer.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/newlib/platform_include/esp_newlib.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/heap/include/esp_heap_caps.h \
  C:/Users/A/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/include/heap/include/multi_heap.h \

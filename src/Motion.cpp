@@ -11,12 +11,16 @@ Motion motion;
 Pwm pwm;
 
 void Motion::init() {
-
     this->global_voltage = 0;
 
     pinMode(CTRL_PWM, OUTPUT);
+    pinMode(Amp_en, OUTPUT);
+    digitalWrite(Amp_en, LOW);
+    pinMode(4, OUTPUT);
+    digitalWrite(4, LOW);
+
     setupMCPWM();
-    step_init();
+    _step_timer_init();
     _applyVoltage();
 }
 
@@ -24,49 +28,132 @@ Motion::Motion()
     : global_voltage(DEFAULT_VOLTAGE), global_duty_cycle(DEFAULT_DUTY_CYCLE),
       forward_freq(DEFAULT_FWD_FREQ), forward_phase_deg(DEFAULT_FWD_PHASE),
       backward_freq(DEFAULT_BWD_FREQ), backward_phase_deg(DEFAULT_BWD_PHASE),
-      _isDirectionReversed(false), _step_time_us(500 * 1000),
-      _still_time_us(1000 * 1000), _is_step_mode_enabled(false) {}
-Motion::~Motion() {}
-
-void Motion::stop() {
-    mcpwm_stop(MCPWM_UNIT_0, MCPWM_TIMER_0);
-    mcpwm_stop(MCPWM_UNIT_1, MCPWM_TIMER_1);
-    pwm.pause(pwm.attached(Amp_en));
-    digitalWrite(Amp_en, LOW);
+      _isDirectionReversed(false), _step_time_ms(100), _still_time_ms(100),
+      _is_step_mode_enabled(false), step_timer_handle(NULL),
+      isCurrentlyStepping(false) {}
+Motion::~Motion() {
+    if (step_timer_handle != NULL) {
+        esp_timer_stop(step_timer_handle);
+        esp_timer_delete(step_timer_handle);
+    }
 }
 
-void Motion::start() {
-    if (_is_step_mode_enabled) {
-        // 步进模式: 启动PWM控制运放通断
-        _apply_step_pwm();
-        pwm.resume(pwm.attached(Amp_en));
-    } else {
-        // 连续模式: 直接拉高使能运放
-        digitalWrite(Amp_en, HIGH);
+void Motion::stop() {
+    // 如果高精度定时器正在运行，则停止它
+    if (step_timer_handle != NULL && esp_timer_is_active(step_timer_handle)) {
+        esp_timer_stop(step_timer_handle);
     }
 
+    _internal_stop_mcpwm();    // 停止高频PWM
+    digitalWrite(Amp_en, LOW); // 关闭运放
+    digitalWrite(4, LOW);
+    isCurrentlyStepping = false; // 重置状态
+    safePrintln("Motion stopped.");
+}
+
+void Motion::moveForward() {
+    // 1. 应用高频PWM参数
+    if (_isDirectionReversed) {
+        _applyMovementParams(backward_freq, backward_phase_deg);
+    } else {
+        _applyMovementParams(forward_freq, forward_phase_deg);
+    }
+
+    // 2. 根据模式启动运动
+    if (_is_step_mode_enabled) {
+        if (step_timer_handle == NULL)
+            return;
+        safePrintln("Starting Step Motion...");
+        digitalWrite(Amp_en, HIGH); // 持续使能运放
+        digitalWrite(4, HIGH);
+        _internal_start_mcpwm(); // 开始第一个“步进”
+        isCurrentlyStepping = true;
+        // [核心修改] 使用 esp_timer_start_once 启动高精度定时器
+        // 定时器周期直接使用微秒 _step_time_us
+        esp_timer_start_once(step_timer_handle, _step_time_us);
+    } else {
+        safePrintln("Starting Continuous Motion...");
+        digitalWrite(Amp_en, HIGH); // 使能运放
+        digitalWrite(4, HIGH);
+        _internal_start_mcpwm(); // 启动高频PWM
+    }
+}
+
+void Motion::moveBackward() {
+    // 1. 应用高频PWM参数
+    if (_isDirectionReversed) {
+        _applyMovementParams(forward_freq, forward_phase_deg);
+    } else {
+        _applyMovementParams(backward_freq, backward_phase_deg);
+    }
+
+    // 2. 根据模式启动运动
+    if (_is_step_mode_enabled) {
+        if (step_timer_handle == NULL)
+            return;
+        safePrintln("Starting Step Motion...");
+        digitalWrite(Amp_en, HIGH); // 持续使能运放
+        digitalWrite(4, HIGH);
+        _internal_start_mcpwm(); // 开始第一个“步进”
+        isCurrentlyStepping = true;
+        // [核心修改] 使用 esp_timer_start_once 启动高精度定时器
+        esp_timer_start_once(step_timer_handle, _step_time_us);
+    } else {
+        safePrintln("Starting Continuous Motion...");
+        digitalWrite(Amp_en, HIGH); // 使能运放
+        digitalWrite(4, HIGH);
+        _internal_start_mcpwm(); // 启动高频PWM
+    }
+}
+
+void Motion::_step_timer_init() {
+    const esp_timer_create_args_t timer_args = {
+        .callback = &stepTimerCallback,
+        .arg = this, // 将 Motion 实例指针作为参数
+        .name = "step-timer"};
+    esp_err_t err = esp_timer_create(&timer_args, &step_timer_handle);
+    if (err != ESP_OK) {
+        safePrintln("FATAL: Failed to create esp_timer!");
+        step_timer_handle = NULL;
+    }
+}
+// 定时器回调函数
+void Motion::stepTimerCallback(void *arg) {
+    // 从参数中获取Motion实例指针
+    Motion *motion_ptr = (Motion *)arg;
+    if (motion_ptr == NULL)
+        return;
+
+    if (motion_ptr->isCurrentlyStepping) {
+        // 当前是“步进”状态，现在切换到“静止”状态
+        motion_ptr->_internal_stop_mcpwm();
+        motion_ptr->isCurrentlyStepping = false;
+        // [核心修改] 使用 esp_timer_start_once 启动下一次定时
+        esp_timer_start_once(motion_ptr->step_timer_handle,
+                             motion_ptr->_still_time_us);
+    } else {
+        // 当前是“静止”状态，现在切换到“步进”状态
+
+        // 重新启动前，必须重新触发软件同步，以重建相位关系
+        mcpwm_timer_trigger_soft_sync(MCPWM_UNIT_0, MCPWM_TIMER_0);
+        mcpwm_timer_trigger_soft_sync(MCPWM_UNIT_1, MCPWM_TIMER_1);
+
+        motion_ptr->_internal_start_mcpwm();
+        motion_ptr->isCurrentlyStepping = true;
+        // [核心修改] 使用 esp_timer_start_once 启动下一次定时
+        esp_timer_start_once(motion_ptr->step_timer_handle,
+                             motion_ptr->_step_time_us);
+    }
+}
+
+void Motion::_internal_start_mcpwm() {
     mcpwm_start(MCPWM_UNIT_0, MCPWM_TIMER_0);
     mcpwm_start(MCPWM_UNIT_1, MCPWM_TIMER_1);
 }
 
-// [核心]
-void Motion::moveForward() {
-    if (_isDirectionReversed) {
-        _applyMovementParams(backward_freq, backward_phase_deg);
-    } else {
-        _applyMovementParams(forward_freq, forward_phase_deg);
-    }
-    start();
-}
-
-// [核心]
-void Motion::moveBackward() {
-    if (_isDirectionReversed) {
-        _applyMovementParams(forward_freq, forward_phase_deg);
-    } else {
-        _applyMovementParams(backward_freq, backward_phase_deg);
-    }
-    start();
+void Motion::_internal_stop_mcpwm() {
+    mcpwm_stop(MCPWM_UNIT_0, MCPWM_TIMER_0);
+    mcpwm_stop(MCPWM_UNIT_1, MCPWM_TIMER_1);
 }
 
 // 方向切换
@@ -190,86 +277,46 @@ void Motion::setupMCPWM() {
         MCPWM_DUTY_MODE_0); // 正常  这个函数里边直接会启动输出pwm
     mcpwm_set_duty_type(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_B,
                         MCPWM_DUTY_MODE_1); // 反向互补
-    mcpwm_stop(MCPWM_UNIT_0, MCPWM_TIMER_0);
     mcpwm_set_duty_type(MCPWM_UNIT_1, MCPWM_TIMER_1, MCPWM_OPR_A,
                         MCPWM_DUTY_MODE_0);
     mcpwm_set_duty_type(MCPWM_UNIT_1, MCPWM_TIMER_1, MCPWM_OPR_B,
                         MCPWM_DUTY_MODE_1);
-    mcpwm_stop(MCPWM_UNIT_1, MCPWM_TIMER_1);
 }
 
 void Motion::enableStepMode(bool enable) {
     if (_is_step_mode_enabled == enable)
         return;
-
     _is_step_mode_enabled = enable;
     safePrintln("Step mode " + String(enable ? "ENABLED" : "DISABLED"));
-
-    // 切换模式时强制停止，让用户重新发送运动指令
+    // 切换模式时强制停止，确保状态正确
     stop();
 }
 
 bool Motion::isStepModeEnabled() const { return _is_step_mode_enabled; }
 
 // ************************步进模式************************
-/**
- * @brief 初始化步进控制引脚
- */
-void Motion::step_init() {
-    pinMode(Amp_en, OUTPUT);
-    digitalWrite(Amp_en, LOW);
-
-    pwm.attach(Amp_en);
-    // 初始化后先暂停PWM输出，等待 step_start() 命令
-    pwm.pause(pwm.attached(Amp_en));
-}
-/**
- * @brief 设置步进参数
- */
-// 步进时间
 bool Motion::setStepTime(float step_time_ms) {
-    if (step_time_ms <= 0) {
-        safePrintln("Error: Step time must be greater than zero.");
+    if (step_time_ms < 0) { // 等于0是允许的，表示没有步进时间
+        safePrintln("Error: Step time must be non-negative.");
         return false;
     }
     _step_time_us = (uint32_t)(step_time_ms * 1000.0f);
-    if (_step_time_us == 0) {
-        safePrintln("Error: Step time is too small to be represented.");
-        return false;
+    if (step_time_ms > 0 && _step_time_us == 0) {
+        // 对于大于0但小于1微秒的输入，强制设为1微秒
+        _step_time_us = 1;
+        safePrintln("Warning: Step time is less than 1us, setting to 1us.");
     }
     return true;
 }
-// 静止时间
 bool Motion::setStillTime(float still_time_ms) {
-    if (still_time_ms <= 0) {
-        safePrintln("Error: Still time must be greater than zero.");
+    if (still_time_ms < 0) {
+        safePrintln("Error: Still time must be non-negative.");
         return false;
     }
     _still_time_us = (uint32_t)(still_time_ms * 1000.0f);
-    if (_still_time_us == 0) {
-        safePrintln("Error: Still time is too small to be represented.");
-        return false;
+    if (still_time_ms > 0 && _still_time_us == 0) {
+        _still_time_us = 1;
+        safePrintln("Warning: Still time is less than 1us, setting to 1us.");
     }
     return true;
-}
-
-/**
- * @brief [私有] 根据步进参数计算并应用PWM设置
- */
-void Motion::_apply_step_pwm() {
-    uint32_t total_period_us = _step_time_us + _still_time_us;
-    if (total_period_us == 0)
-        return;
-
-    // 1. 根据微秒计算频率
-    //    频率 = 1 / 周期(秒) = 1 / (总微秒 / 1,000,000) = 1,000,000 / 总微秒
-    float step_freq_hz = 1000000.0f / total_period_us;
-
-    // 2. 根据微秒计算占空比对应的PWM值
-    uint32_t max_duty_value = (1 << resolution) - 1;
-    uint32_t step_duty_value =
-        (uint32_t)(((float)_step_time_us / total_period_us) * max_duty_value);
-
-    // 3. 将计算出的频率和占空比写入PWM通道
-    pwm.write(Amp_en, step_duty_value, (uint32_t)step_freq_hz, resolution);
 }
