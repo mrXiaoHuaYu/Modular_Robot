@@ -40,31 +40,25 @@ static bool parseStringToFloat(const String &s, float &result) {
 // --- 1. 定义所有命令的具体处理函数 ---
 
 static void handle_Forward(const String &args) {
-    safePrintln("Executing FORWARD command");
     ledStatus.setStatus(LED_MOTION_ACTIVE);
-    // TODO: 在这里解析args以获取频率、电压等参数
     motion.moveForward();
 }
 
 static void handle_Backward(const String &args) {
-    safePrintln("Executing BACKWARD command");
     ledStatus.setStatus(LED_MOTION_ACTIVE);
     motion.moveBackward();
 }
 
 static void handle_Stop(const String &args) {
-    safePrintln("Executing STOP command");
     ledStatus.setStatus(LED_STANDBY);
     motion.stop();
 }
 
 static void handle_OtaEnable(const String &args) {
-    safePrintln("Executing OTA_ENABLE command");
     xEventGroupSetBits(xOtaEventGroup, OTA_START_BIT);
 }
 
 static void handle_OtaDisable(const String &args) {
-    safePrintln("Executing OTA_DISABLE command");
     xEventGroupSetBits(xOtaEventGroup, OTA_STOP_BIT);
 }
 
@@ -124,15 +118,11 @@ static void processSingleParam(const String &paramPair) {
         safePrintln("Failed to set param in batch '" + paramName +
                     "'. Value '" + paramValueStr + "' may be invalid.");
     }
-    // 注意：在批处理模式下，我们通常不为单个参数的失败而中断或回复。
-    // 可以选择记录失败，或者信任上位机发来的数据都是合法的。
 }
 
 static void handle_SetBatchParams(const String &args) {
     String currentArgs = args;
     int separatorIndex;
-
-    safePrintln("Executing BATCH_PARAMS");
 
     // 循环处理由分号分隔的每个参数对
     while ((separatorIndex = currentArgs.indexOf(';')) != -1) {
@@ -153,7 +143,6 @@ static void handle_SetBatchParams(const String &args) {
 }
 
 static void handle_SwapDirection(const String &args) {
-    safePrintln("Executing SWAP_DIRECTION command.");
     motion.swapDirection(); // 调用 motion 对象的函数来切换方向
 
     // 回复一个 ACK 消息，并告知当前的状态

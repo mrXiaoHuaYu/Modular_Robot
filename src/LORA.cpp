@@ -115,7 +115,7 @@ void LORA::sendData(const String &data) {
     Serial1.print(data); // 直接发送字符串
 
     waitAUXReady();
-    safePrintln("Sent: " + data);
+    safePrintln("Send: " + data);
 }
 
 LORA::LORA() {}

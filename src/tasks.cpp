@@ -83,6 +83,12 @@ static void Task_LoRa(void *pvParameters) {
 
     safePrintln("Device ID is: " + deviceID);
 
+    String paramsPayload = motion.getAllParamsAsString();
+    String reportMsg = hostID + ":" + deviceID + ":" + REPORT_ALL_PARAMS + ":" +
+                       paramsPayload + "\n";
+    lora.sendData(reportMsg);
+    safePrintln("Initial parameters reported to HOST.");
+
     for (;;) {
         if (Serial1.available() > 0) {
             char inChar = Serial1.read();

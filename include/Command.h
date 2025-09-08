@@ -42,6 +42,8 @@
 // - "BWD_FREQ"     (100-50000)
 // - "BWD_PHASE"    (0-360)
 
+#define REPORT_ALL_PARAMS "REPORT_ALL_PARAMS" // 设备启动报告自身参数
+
 #define SWAP_DIRECTION "SWAP_DIR" // 切换运动方向 (前进/后退)
 
 // 启用/禁用步进模式; payload: "1" 或 "0"

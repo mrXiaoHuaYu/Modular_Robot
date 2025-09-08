@@ -16,7 +16,7 @@ void Motion::init() {
     pinMode(CTRL_PWM, OUTPUT);
     pinMode(Amp_en, OUTPUT);
     digitalWrite(Amp_en, LOW);
-    pinMode(4, OUTPUT);
+    pinMode(4, OUTPUT); // !!!!!!!!!!!!!!!!!注意新板子需要把这个删除
     digitalWrite(4, LOW);
 
     setupMCPWM();
@@ -68,7 +68,7 @@ void Motion::moveForward() {
         digitalWrite(4, HIGH);
         _internal_start_mcpwm(); // 开始第一个“步进”
         isCurrentlyStepping = true;
-        // [核心修改] 使用 esp_timer_start_once 启动高精度定时器
+        // 使用 esp_timer_start_once 启动高精度定时器
         // 定时器周期直接使用微秒 _step_time_us
         esp_timer_start_once(step_timer_handle, _step_time_us);
     } else {
@@ -96,7 +96,7 @@ void Motion::moveBackward() {
         digitalWrite(4, HIGH);
         _internal_start_mcpwm(); // 开始第一个“步进”
         isCurrentlyStepping = true;
-        // [核心修改] 使用 esp_timer_start_once 启动高精度定时器
+        // 使用 esp_timer_start_once 启动高精度定时器
         esp_timer_start_once(step_timer_handle, _step_time_us);
     } else {
         safePrintln("Starting Continuous Motion...");
@@ -128,7 +128,7 @@ void Motion::stepTimerCallback(void *arg) {
         // 当前是“步进”状态，现在切换到“静止”状态
         motion_ptr->_internal_stop_mcpwm();
         motion_ptr->isCurrentlyStepping = false;
-        // [核心修改] 使用 esp_timer_start_once 启动下一次定时
+        // 使用 esp_timer_start_once 启动下一次定时
         esp_timer_start_once(motion_ptr->step_timer_handle,
                              motion_ptr->_still_time_us);
     } else {
@@ -140,7 +140,7 @@ void Motion::stepTimerCallback(void *arg) {
 
         motion_ptr->_internal_start_mcpwm();
         motion_ptr->isCurrentlyStepping = true;
-        // [核心修改] 使用 esp_timer_start_once 启动下一次定时
+        // 使用 esp_timer_start_once 启动下一次定时
         esp_timer_start_once(motion_ptr->step_timer_handle,
                              motion_ptr->_step_time_us);
     }
@@ -319,4 +319,22 @@ bool Motion::setStillTime(float still_time_ms) {
         safePrintln("Warning: Still time is less than 1us, setting to 1us.");
     }
     return true;
+}
+
+String Motion::getAllParamsAsString() {
+    String params = "";
+    params += "VOLTAGE:" + String(this->global_voltage) + ";";
+    params += "DUTY:" + String(this->global_duty_cycle, 2) + ";";
+    params += "FWD_FREQ:" + String(this->forward_freq) + ";";
+    params += "FWD_PHASE:" + String(this->forward_phase_deg, 2) + ";";
+    params += "BWD_FREQ:" + String(this->backward_freq) + ";";
+    params += "BWD_PHASE:" + String(this->backward_phase_deg, 2) + ";";
+    params += "STEP_TIME_MS:" + String(this->_step_time_ms, 2) + ";";
+    params += "STILL_TIME_MS:" + String(this->_still_time_ms, 2) + ";";
+    params +=
+        "STEP_MODE_ENABLED:" + String(this->_is_step_mode_enabled ? "1" : "0") +
+        ";";
+    params +=
+        "direction_reversed:" + String(this->_isDirectionReversed ? "1" : "0");
+    return params;
 }

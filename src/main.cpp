@@ -13,6 +13,8 @@
 #include "Pins.h"
 #include "tasks.h"
 
+// pinMode(4, OUTPUT); // !!!!!!!!!!!!!!!!!注意新板子需要把这个删除
+
 // 协议：RECEIVER_ID:SENDER_ID:COMMAND:PAYLOAD\n
 // 例如：SR_01:HOST:REPORT_IP:172.20.10.2  上位机--->下位机SR_01
 // 例如：SR_01:SR_02:MOVE                  下位机SR_02--->下位机SR_01

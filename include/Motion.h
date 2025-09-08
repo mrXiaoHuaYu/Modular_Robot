@@ -38,6 +38,8 @@ class Motion {
     bool setStepTime(float step_time_ms);
     bool setStillTime(float still_time_ms);
 
+    String getAllParamsAsString(); // 获取所有运动参数
+
   private:
     void setupMCPWM();
     void _step_timer_init();
